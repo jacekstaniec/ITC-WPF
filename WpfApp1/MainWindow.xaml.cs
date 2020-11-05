@@ -4,9 +4,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Data.SqlClient;
-using WpfApp1.Data;
+using WpfApp1.Models;
 using System.Data;
-using Octokit;
+using WpfApp1.ViewModels;
 
 namespace WpfApp1
 {
@@ -18,7 +18,6 @@ namespace WpfApp1
 
         //        List<Header> myHeaders = new List<Header>();
         //        List<Detail> myDetails = new List<Detail>();
-        List<GitUser> myGitUser = new List<GitUser>();
 
         DataTable dtHeader = new DataTable();
         DataTable dtDetail = new DataTable();
@@ -302,34 +301,21 @@ namespace WpfApp1
             {
                 DataGridRow datarow = dg.ItemContainerGenerator.ContainerFromIndex(_index) as DataGridRow;
             }
-            //var item = dg.ItemContainerGenerator.ItemFromContainer(datarow);
         }
 
         private async void GitRepo()
         {
-            Repository repository;
-            string GitHubIdentity = "jacekstaniec";
-            var productInformation = new ProductHeaderValue(GitHubIdentity);
-            var client = new GitHubClient(productInformation);
-            try
-            {
-                repository = await client.Repository.Get("jacekstaniec", "ITC-WPF");
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.ToString());
-                return;
-            }
+            const string GitHubIdentity = "jacekstaniec";
+            const string GitHubProject = "ITC-WPF";
+            GitHubRepoVM gtavm = new GitHubRepoVM(GitHubIdentity, GitHubProject);
+            List<GitHubAttribute> myGitHubAttributes = await gtavm.GetGitHubRepoAsync();
+            dgGitHub.ItemsSource = null;
+            dgGitHub.ItemsSource = myGitHubAttributes;
+        }
 
-            GitUser _createdat = new GitUser() { _attr = "created at", _value = repository.CreatedAt.ToString() };
-            GitUser _description = new GitUser() { _attr = "description", _value = repository.Description.ToString() };
-            GitUser _fullname = new GitUser() { _attr = "fullname", _value = repository.FullName.ToString() };
-            GitUser _owner = new GitUser() { _attr = "owner", _value = repository.Owner.Login.ToString() };
-            myGitUser.Add(_createdat);
-            myGitUser.Add(_description);
-            myGitUser.Add(_fullname);
-            myGitUser.Add(_owner);
-            dgGitHub.ItemsSource = myGitUser;
+        private void btn_github_click(object sender, RoutedEventArgs e)
+        {
+            GitRepo();
         }
     }
 }
