@@ -20,7 +20,6 @@ namespace WpfApp1
         {
             InitializeComponent();
             FillDataGrid();
-            // FillGitRepo();
         }
 
         void FillDataGrid()
@@ -51,42 +50,15 @@ namespace WpfApp1
             DBClass.closeConnection();
         }
 
-        void dgh_NewArticle(object sender, RoutedEventArgs e)
+        void RefreshDetails(int param)
         {
-            var button = sender as Button;
-            var param = Convert.ToInt16(button.CommandParameter);
-
-            try
-            {
-                var Res = MessageBox.Show("Do you want to Add new article", "Confirm", MessageBoxButton.YesNo);
-                if (Res == MessageBoxResult.Yes)
-                {
-                    using (SqlConnection con = new SqlConnection(ConString))
-                    {
-                        string values = String.Format(" VALUES ( '{0}' , '{1}', '{2}', '{3}', '{4}' )", param.ToString(), "", "0", "0", "0");
-                        SqlCommand crud_command = new SqlCommand();
-                        crud_command.Connection = con;
-                        con.Open();
-                        crud_command.CommandText = "INSERT Details (header_id,article_name,quantity,net,gross) " + values;
-                        crud_command.ExecuteNonQuery();
-                        con.Close();
-                    }
-                    MessageBox.Show("new article added");
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-
-            ListCollectionView collectionView = new ListCollectionView((System.Collections.IList)dtDetail.DefaultView);
-            //      ListCollectionView collectionView = new ListCollectionView((System.Collections.IList)dgDetails.ItemsSource);
+            ListCollectionView collectionView = new ListCollectionView((System.Collections.IList)DBClass.dtDetail.DefaultView);
             collectionView.Filter = (ff) =>
             {
                 DataRowView d = ff as DataRowView;
                 if (d != null)
                 {
-                    if ((Int32)d.Row.ItemArray[1] == param) return true; return false;    // druga kolumna z tabeli Details => header_id
+                    if ((Int32)d.Row.ItemArray[1] == param) return true; return false;    // druga kolumna z Details => header_id
                 }
                 return false;
             };
@@ -97,20 +69,49 @@ namespace WpfApp1
         {
             var button = sender as Button;
             var param = Convert.ToInt16(button.CommandParameter);
-
-            ListCollectionView collectionView = new ListCollectionView((System.Collections.IList)dtDetail.DefaultView);
-            //      ListCollectionView collectionView = new ListCollectionView((System.Collections.IList)dgDetails.ItemsSource);
-            collectionView.Filter = (ff) =>
-            {
-                DataRowView d = ff as DataRowView;
-                if (d != null)
-                {
-                    if ((Int32)d.Row.ItemArray[1] == param) return true; return false;    // druga kolumna z tabeli Details => header_id
-                }
-                return false;
-            };
-            dgDetails.ItemsSource = collectionView;
+            RefreshDetails(param);
         }
+
+        void dgh_NewArticle(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var param = Convert.ToInt16(button.CommandParameter);
+
+            var Res = MessageBox.Show("Do you want to Add new article", "Confirm", MessageBoxButton.YesNo);
+            if (Res == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    string values = String.Format("INSERT Details(header_id,article_name,quantity,net,gross) VALUES ( '{0}' , '{1}', '{2}', '{3}', '{4}'); SELECT SCOPE_IDENTITY()", param.ToString(), "", "0", "0", "0");
+                    SqlCommand crud_cmd = new SqlCommand();
+                    crud_cmd.Connection = DBClass.con;
+                    crud_cmd.CommandType = CommandType.Text;
+                    DBClass.con.Open();
+                    crud_cmd.CommandText = values;
+                    int new_id = Convert.ToInt32(crud_cmd.ExecuteScalar());
+
+                    DataRow row;
+                    row = DBClass.dtDetail.NewRow();
+                    row["Id"] = new_id;
+                    row["Header_id"] = param;
+                    row["Article_name"] = "";
+                    row["Quantity"] = "0";
+                    row["Net"] = "0";
+                    row["Gross"] = "0";
+                    DBClass.dtDetail.Rows.Add(row);
+                    dgDetails.ItemsSource = DBClass.dtDetail.DefaultView;
+                    RefreshDetails(param);
+                    MessageBox.Show("new (empty) article added");
+                    //TODO: form do uzupełniania danych w locie
+                }
+                catch (SqlException ex) { MessageBox.Show(ex.Message); }
+                catch (Exception ex) { MessageBox.Show(ex.Message); }
+                finally { DBClass.con.Close(); }
+            }
+        }
+
+
+
 
         void dgh_DeleteHeader(object sender, RoutedEventArgs e)
         {
@@ -252,6 +253,8 @@ namespace WpfApp1
             }
         }
 
+
+
         async void FillGitRepo()
         {
             const string GitHubIdentity = "jacekstaniec";
@@ -263,7 +266,7 @@ namespace WpfApp1
         }
 
         /// <summary>
-        /// event click on github button
+        /// event click on github button (fill git data)
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
