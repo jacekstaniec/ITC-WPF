@@ -88,7 +88,7 @@
             </DataGrid>
             <StackPanel Grid.Column="1" Margin="10">
                 <Label Height="25">Dane pobrane z repo GIT</Label>
-                <Button Height="25" Click="btn_github_click">pobierz ponownie</Button>
+                <Button Height="25" Click="btn_github_click">pobierz / pobierz ponownie</Button>
                 <DataGrid Name="dgGitHub" AutoGenerateColumns="false" CanUserAddRows="False">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Attribute" Binding="{Binding GitAttr}" IsReadOnly="True" />

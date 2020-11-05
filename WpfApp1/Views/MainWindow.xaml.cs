@@ -3,22 +3,15 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Data;
 using System.Data.SqlClient;
 using WpfApp1.Models;
-using System.Data;
 using WpfApp1.ViewModels;
 
 namespace WpfApp1
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-
-        //        List<Header> myHeaders = new List<Header>();
-        //        List<Detail> myDetails = new List<Detail>();
-
         DataTable dtHeader = new DataTable();
         DataTable dtDetail = new DataTable();
         string ConString;
@@ -27,76 +20,38 @@ namespace WpfApp1
         {
             InitializeComponent();
             FillDataGrid();
-            GitRepo();
-
-            void FillDataGrid()
-            {
-                // string ConString = ConfigurationManager.ConnectionStrings["ConString"].ConnectionString;
-                string DbPath = System.IO.Path.GetFullPath("Database1.mdf");
-                ConString = "Data Source = (LocalDB)\\MSSQLLocalDB; AttachDbFilename = " + DbPath + "; Integrated Security = True";
-                string sqlHeader = string.Empty;
-                string sqlDetail = string.Empty;
-
-                using (SqlConnection con = new SqlConnection(ConString))
-                {
-                    sqlHeader = "SELECT Id, Customer_id, Header_name, Date FROM Headers";
-                    sqlDetail = "SELECT Id, Header_id, Article_name, Quantity, Net, Gross FROM Details";
-                    // TODO try catch
-                    SqlCommand cmdHeader = new SqlCommand(sqlHeader, con);
-                    SqlCommand cmdDetail = new SqlCommand(sqlDetail, con);
-                    SqlDataAdapter sdaHeader = new SqlDataAdapter(cmdHeader);
-                    SqlDataAdapter sdaDetail = new SqlDataAdapter(cmdDetail);
-                    dtHeader = new DataTable("H");
-                    dtDetail = new DataTable("D");
-                    // dtHeader.PrimaryKey = new DataColumn[] { dtHeader.Columns["Id"] };
-                    sdaHeader.Fill(dtHeader);
-                    sdaDetail.Fill(dtDetail);
-                    dgHeaders.ItemsSource = dtHeader.DefaultView;
-                    // dgDetails.ItemsSource = dtDetail.DefaultView;
-
-                    #region
-                    //con.Open();
-                    //using (SqlDataReader reader = cmdHeader.ExecuteReader())
-                    //{
-                    //    while (reader.Read())
-                    //    {
-                    //        int _id = Convert.ToInt16(reader["Id"]);
-                    //        int _customer_id = Convert.ToInt16(reader["Customer_id"]);
-                    //        string _header_name = Convert.ToString(reader["Header_name"]);
-                    //        DateTime _date = Convert.ToDateTime(reader["Date"]);
-                    //        Header Hed1 = new Header() { Id = _id, Customer_id = 1, Header_name = _header_name, Date = _date };
-                    //        myHeaders.Add(Hed1);
-                    //    }
-                    //    reader.Close();
-                    //}
-                    //CmdString = string.Empty;
-                    //CmdString = "SELECT Id, Header_id, Article_name, Quantity, Net, Gross FROM Details";
-                    //SqlCommand cmdDetail = new SqlCommand(CmdString, con);
-                    //using (SqlDataReader reader = cmdDetail.ExecuteReader())
-                    //{
-                    //    while (reader.Read())
-                    //    {
-                    //        int _id = Convert.ToInt16(reader[0]);
-                    //        int _header_id = Convert.ToInt16(reader[1]);
-                    //        string _article_name = Convert.ToString(reader[2]);
-                    //        int _quantity = Convert.ToInt16(reader[3]);
-                    //        SqlMoney _net = (SqlMoney)Convert.ToSingle(reader[4]);
-                    //        SqlMoney _gross = (SqlMoney)Convert.ToSingle(reader[5]);
-                    //        Detail Det1 = new Detail() { Id = _id, Header_id = _header_id, Article_name = _article_name, Quantity = _quantity, Net = _net, Gross = _gross };
-                    //        myDetails.Add(Det1);
-                    //    }
-                    //    reader.Close();
-                    //}
-                    //con.Close();
-                    //dgHeaders.ItemsSource = myHeaders;
-                    //dgDetails.ItemsSource = myDetails;
-                    #endregion
-                }
-            }
+            // FillGitRepo();
         }
 
+        void FillDataGrid()
+        {
+            DBClass.openConnection();
 
-        private void dgh_NewArticle(object sender, RoutedEventArgs e)
+            DBClass.sqlHeader = "SELECT Id, Customer_id, Header_name, Date FROM Headers";
+            DBClass.cmdHeader.CommandType = CommandType.Text;
+            DBClass.cmdHeader.CommandText = DBClass.sqlHeader;
+            DBClass.daHeader = new SqlDataAdapter(DBClass.cmdHeader);
+            DBClass.dtHeader = new DataTable();
+            DBClass.daHeader.Fill(DBClass.dtHeader);
+
+            DBClass.sqlDetail = "SELECT Id, Header_id, Article_name, Quantity, Net, Gross FROM Details";
+            DBClass.cmdDetail.CommandType = CommandType.Text;
+            DBClass.cmdDetail.CommandText = DBClass.sqlDetail;
+            DBClass.daDetail = new SqlDataAdapter(DBClass.cmdDetail);
+            DBClass.dtDetail = new DataTable();
+            DBClass.daDetail.Fill(DBClass.dtDetail);
+
+            // TODO: przy wiekszej liczbie tabel - raczej rozwiazanie niestatyczne
+
+            dgHeaders.ItemsSource = null;
+            dgDetails.ItemsSource = null;
+            dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
+            //                dgDetails.ItemsSource = DBClass.dtDetail.DefaultView;
+
+            DBClass.closeConnection();
+        }
+
+        void dgh_NewArticle(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var param = Convert.ToInt16(button.CommandParameter);
@@ -138,8 +93,7 @@ namespace WpfApp1
             dgDetails.ItemsSource = collectionView;
         }
 
-
-        private void dgh_ShowDetails(object sender, RoutedEventArgs e)
+        void dgh_ShowDetails(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var param = Convert.ToInt16(button.CommandParameter);
@@ -158,7 +112,7 @@ namespace WpfApp1
             dgDetails.ItemsSource = collectionView;
         }
 
-        private void dgh_DeleteHeader(object sender, RoutedEventArgs e)
+        void dgh_DeleteHeader(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var param = Convert.ToInt32(button.CommandParameter);
@@ -188,7 +142,7 @@ namespace WpfApp1
             }
         }
 
-        private void dgh_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        void dgh_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
             DataGridRow dgr = e.Row as DataGridRow;
             DataGrid dtr = sender as DataGrid;
@@ -209,13 +163,8 @@ namespace WpfApp1
 
             }
         }
-
-        /// <summary>
-        /// procedura dodaje lub updatuje dane
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void dgh_AddToDb(object sender, RoutedEventArgs e)
+                
+        void dgh_AddToDb(object sender, RoutedEventArgs e)
         {
 // TODO: rozbić na osobne produry
             DataRowView drv = dgHeaders.SelectedItem as DataRowView;
@@ -292,7 +241,7 @@ namespace WpfApp1
         
 // TODO: pozbyć się tej procedury
         int _index;
-        private void dgHeaders_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        void dgHeaders_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var dg = sender as DataGrid;
             if (dg == null) return;
@@ -303,7 +252,7 @@ namespace WpfApp1
             }
         }
 
-        private async void GitRepo()
+        async void FillGitRepo()
         {
             const string GitHubIdentity = "jacekstaniec";
             const string GitHubProject = "ITC-WPF";
@@ -313,9 +262,15 @@ namespace WpfApp1
             dgGitHub.ItemsSource = myGitHubAttributes;
         }
 
-        private void btn_github_click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// event click on github button
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void btn_github_click(object sender, RoutedEventArgs e)
         {
-            GitRepo();
+            FillGitRepo();
         }
+
     }
 }
