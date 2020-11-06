@@ -209,6 +209,7 @@ namespace WpfApp1
         void dgh_SaveChanges(object sender, RoutedEventArgs e)
         {
             dgHeaders.Columns[9].Visibility = Visibility.Hidden;
+            dgDetails.Columns[8].Visibility = Visibility.Hidden;
             int ind = dgHeaders.SelectedIndex;
             DataGridRow editedRow = dgHeaders.ItemContainerGenerator.ContainerFromItem(dgHeaders.Items[ind]) as DataGridRow;
             editedRow.Background = Brushes.White;
@@ -238,6 +239,40 @@ namespace WpfApp1
             return;
         }
 
+        void dgh_UpdateAttribute(object sender, RoutedEventArgs e)
+        {
+            dgHeaders.Columns[9].Visibility = Visibility.Hidden;
+            dgDetails.Columns[7].Visibility = Visibility.Hidden;
+            int ind = dgDetails.SelectedIndex;
+            DataGridRow editedRow = dgDetails.ItemContainerGenerator.ContainerFromItem(dgDetails.Items[ind]) as DataGridRow;
+            editedRow.Background = Brushes.White;
+
+            var button = sender as Button;
+            var param = Convert.ToInt32(button.CommandParameter);  // id
+
+            DataRowView drv = (DataRowView)button.DataContext;
+            string idrv1 = drv.Row.ItemArray[1].ToString();     // header_id
+            string idrv2 = drv.Row.ItemArray[2].ToString();     // article_name
+            string idrv3 = drv.Row.ItemArray[3].ToString();             // quantity
+            float idrv4 = Convert.ToSingle(drv.Row.ItemArray[4]);       // net
+            float idrv5 = (float)(idrv4 * 1.23);                        // gross
+            try
+            {
+                DBClass.con.Open();
+
+                DBClass.sql = string.Format("UPDATE Details set header_id = '{0}', article_name = '{1}', quantity='{2}', net='{3}', gross='{4}'  WHERE Id ='{5}'", idrv1, idrv2, idrv3, idrv4, idrv5, param.ToString());
+                DBClass.cmd.CommandText = DBClass.sql;
+                DBClass.cmd.ExecuteNonQuery();
+
+                MessageBox.Show("article updated");
+            }
+            catch (SqlException ex) { MessageBox.Show(ex.Message); }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+            finally { DBClass.con.Close(); }
+            return;
+        }
+
+
         /// <summary>
         /// event click on github button
         /// </summary>
@@ -251,14 +286,25 @@ namespace WpfApp1
         void dgHeaders_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
             dgHeaders.Columns[9].Visibility = Visibility.Hidden;
+            dgDetails.Columns[7].Visibility = Visibility.Hidden;
             int ind = dgHeaders.SelectedIndex;
             DataGridRow editedRow = dgHeaders.ItemContainerGenerator.ContainerFromItem(dgHeaders.Items[ind]) as DataGridRow;
+            editedRow.Background = Brushes.Red;
+        }
+
+        void dgDetails_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        {
+            dgHeaders.Columns[9].Visibility = Visibility.Hidden;
+            dgDetails.Columns[7].Visibility = Visibility.Hidden;
+            int ind = dgDetails.SelectedIndex;
+            DataGridRow editedRow = dgDetails.ItemContainerGenerator.ContainerFromItem(dgDetails.Items[ind]) as DataGridRow;
             editedRow.Background = Brushes.Red;
         }
 
         void dgh_UpdateHeader(object sender, RoutedEventArgs e)
         {
             dgHeaders.Columns[9].Visibility = Visibility.Visible;
+            dgDetails.Columns[7].Visibility = Visibility.Visible;
         }
 
         async void FillGitRepo()
