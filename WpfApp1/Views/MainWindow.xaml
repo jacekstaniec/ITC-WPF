@@ -13,8 +13,11 @@
             <RowDefinition/>
             <RowDefinition/>
         </Grid.RowDefinitions>
-        <Button Click="dgh_NewHeader" Height="20" Width="100" HorizontalAlignment="Left">Add New Header</Button>
-        <DataGrid Grid.Row="1" Name="dgHeaders" AutoGenerateColumns="False" CanUserAddRows="false" CanUserDeleteRows="False">
+        <WrapPanel>
+            <Button Click="dgh_NewHeader" Height="20" Width="100" HorizontalAlignment="Left">Add New Header</Button>
+            <Button Click="dgh_UpdateHeader" Height="20" Width="120" HorizontalAlignment="Right">Show Update Buttons</Button>
+        </WrapPanel>
+        <DataGrid Grid.Row="1" Name="dgHeaders" AutoGenerateColumns="False" CanUserAddRows="false" CanUserDeleteRows="False" RowEditEnding="dgHeaders_RowEditEnding" >
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Id" Binding="{Binding Id}" IsReadOnly="True" />
                 <DataGridTemplateColumn Header="Date">
@@ -46,19 +49,19 @@
                 </DataGridTemplateColumn>
 
 
-                <DataGridTemplateColumn Header="Update">
+                <DataGridTemplateColumn Header="Delete">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Button Click="dgh_SaveChanges" CommandParameter="{Binding Id}">Save Changes</Button>
+                            <Button Click="dgh_DeleteHeader" CommandParameter="{Binding Id}">Delete</Button>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
 
-                <DataGridTemplateColumn Header="Delete">
+                <DataGridTemplateColumn Header="Update" Visibility="Hidden">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Button Click="dgh_DeleteHeader" CommandParameter="{Binding Id}">Delete</Button>
+                            <Button Click="dgh_SaveChanges" CommandParameter="{Binding Id}">Save Changes</Button>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

@@ -7,6 +7,7 @@ using System.Data;
 using System.Data.SqlClient;
 using WpfApp1.Models;
 using WpfApp1.ViewModels;
+using System.Windows.Media;
 
 namespace WpfApp1
 {
@@ -14,7 +15,7 @@ namespace WpfApp1
     {
         DataTable dtHeader = new DataTable();
         DataTable dtDetail = new DataTable();
-        string ConString;
+        //    string ConString;
 
         public MainWindow()
         {
@@ -205,12 +206,60 @@ namespace WpfApp1
             }
         }
 
-
-
         void dgh_SaveChanges(object sender, RoutedEventArgs e)
         {
+            dgHeaders.Columns[9].Visibility = Visibility.Hidden;
+            int ind = dgHeaders.SelectedIndex;
+            DataGridRow editedRow = dgHeaders.ItemContainerGenerator.ContainerFromItem(dgHeaders.Items[ind]) as DataGridRow;
+            editedRow.Background = Brushes.White;
+
+            var button = sender as Button;
+            var param = Convert.ToInt32(button.CommandParameter);  // id
+
+            DataRowView drv = (DataRowView)button.DataContext;
+            string idrv1 = drv.Row.ItemArray[1].ToString();     // customer_id
+            string idrv2 = drv.Row.ItemArray[2].ToString();     // header_name
+            string idrv3 = drv.Row.ItemArray[3].ToString();     // date
+            try
+            {
+                //                RefreshDetails(idrv);
+
+                DBClass.con.Open();
+
+                DBClass.sql = string.Format("UPDATE Headers set customer_id = '{0}', header_name = '{1}', date = '{2}'  WHERE Id = {3}", idrv1, idrv2, idrv3, param.ToString());
+                DBClass.cmd.CommandText = DBClass.sql;
+                DBClass.cmd.ExecuteNonQuery();
+
+                MessageBox.Show("header updated");
+            }
+            catch (SqlException ex) { MessageBox.Show(ex.Message); }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+            finally { DBClass.con.Close(); }
+            return;
         }
 
+        /// <summary>
+        /// event click on github button
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void btn_github_click(object sender, RoutedEventArgs e)
+        {
+            FillGitRepo();
+        }
+
+        void dgHeaders_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        {
+            dgHeaders.Columns[9].Visibility = Visibility.Hidden;
+            int ind = dgHeaders.SelectedIndex;
+            DataGridRow editedRow = dgHeaders.ItemContainerGenerator.ContainerFromItem(dgHeaders.Items[ind]) as DataGridRow;
+            editedRow.Background = Brushes.Red;
+        }
+
+        void dgh_UpdateHeader(object sender, RoutedEventArgs e)
+        {
+            dgHeaders.Columns[9].Visibility = Visibility.Visible;
+        }
 
         async void FillGitRepo()
         {
@@ -221,16 +270,5 @@ namespace WpfApp1
             dgGitHub.ItemsSource = null;
             dgGitHub.ItemsSource = myGitHubAttributes;
         }
-
-        /// <summary>
-        /// event click on github button (fill git data)
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void btn_github_click(object sender, RoutedEventArgs e)
-        {
-            FillGitRepo();
-        }
-
     }
 }
