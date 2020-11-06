@@ -74,7 +74,7 @@
                 <ColumnDefinition Width="450"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <DataGrid Grid.Column="0" Name="dgDetails" AutoGenerateColumns="false" CanUserAddRows="True" RowEditEnding="dgDetails_RowEditEnding">
+            <DataGrid Grid.Column="0" Name="dgDetails" AutoGenerateColumns="false" CanUserDeleteRows="False" CanUserAddRows="False" RowEditEnding="dgDetails_RowEditEnding">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Id" Binding="{Binding Id}" IsReadOnly="True" />
                     <DataGridTextColumn Header="HeaderId" Binding="{Binding Header_id}" IsReadOnly="True" />

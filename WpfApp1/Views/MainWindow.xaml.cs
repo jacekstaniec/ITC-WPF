@@ -13,10 +13,6 @@ namespace WpfApp1
 {
     public partial class MainWindow : Window
     {
-        DataTable dtHeader = new DataTable();
-        DataTable dtDetail = new DataTable();
-        //    string ConString;
-
         public MainWindow()
         {
             InitializeComponent();
@@ -27,7 +23,7 @@ namespace WpfApp1
         {
             DBClass.openConnection();
 
-            DBClass.sql = "SELECT Id, Customer_id, Header_name, Date FROM Headers";
+            DBClass.sql = "SELECT Id, Customer_id, Header_name, Date, Net, Gross FROM Headers";
             DBClass.cmd.CommandType = CommandType.Text;
             DBClass.cmd.CommandText = DBClass.sql;
             DBClass.daHeader = new SqlDataAdapter(DBClass.cmd);
@@ -67,6 +63,7 @@ namespace WpfApp1
                 }
                 return false;
             };
+            dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
             dgDetails.ItemsSource = collectionView;
         }
 
@@ -204,12 +201,13 @@ namespace WpfApp1
                 catch (Exception ex) { MessageBox.Show(ex.Message); }
                 finally { DBClass.con.Close(); }
             }
+            net_gross(idrv);
         }
 
         void dgh_SaveChanges(object sender, RoutedEventArgs e)
         {
             dgHeaders.Columns[9].Visibility = Visibility.Hidden;
-            dgDetails.Columns[8].Visibility = Visibility.Hidden;
+            dgDetails.Columns[7].Visibility = Visibility.Hidden;
             int ind = dgHeaders.SelectedIndex;
             DataGridRow editedRow = dgHeaders.ItemContainerGenerator.ContainerFromItem(dgHeaders.Items[ind]) as DataGridRow;
             editedRow.Background = Brushes.White;
@@ -269,7 +267,7 @@ namespace WpfApp1
             catch (SqlException ex) { MessageBox.Show(ex.Message); }
             catch (Exception ex) { MessageBox.Show(ex.Message); }
             finally { DBClass.con.Close(); }
-            return;
+            net_gross(Convert.ToInt32(idrv1));
         }
 
 
@@ -306,6 +304,40 @@ namespace WpfApp1
             dgHeaders.Columns[9].Visibility = Visibility.Visible;
             dgDetails.Columns[7].Visibility = Visibility.Visible;
         }
+
+
+        void net_gross(int header_id)
+        {
+            string expression = "Header_id = " + header_id.ToString();
+            DataRow[] rows;
+            rows = DBClass.dtDetail.Select(expression);
+            float SumNet = 0;
+            float SumGross = 0;
+            foreach (var item in rows)
+            {
+                SumNet += Convert.ToSingle(item["Net"]);
+                SumGross += Convert.ToSingle(item["Gross"]);
+            }
+            try
+            {
+                expression = "Id = " + header_id.ToString();
+                rows = DBClass.dtHeader.Select(expression);
+                if (rows != null)
+                {
+                    rows[0]["Net"] = SumNet;
+                    rows[0]["Gross"] = SumGross;
+                }
+                DBClass.con.Open();
+
+                DBClass.sql = string.Format("UPDATE Headers SET net='{0}', gross='{1}' WHERE id = '{2}' ", SumNet, SumGross, header_id);
+                DBClass.cmd.CommandText = DBClass.sql;
+                DBClass.cmd.ExecuteNonQuery();
+            }
+            catch (SqlException ex) { MessageBox.Show(ex.Message); }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+            finally { DBClass.con.Close(); }
+        }
+
 
         async void FillGitRepo()
         {

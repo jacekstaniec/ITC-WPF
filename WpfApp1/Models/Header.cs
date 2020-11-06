@@ -14,7 +14,8 @@ namespace WpfApp1.Models
         public int Customer_id { get; set; }
         public SqlMoney Net { get; set; }
         public SqlMoney Gross { get; set; }
-        //        public List<Detail> myDetails { get; set; } = new List<Detail>();
+
+        // public List<Detail> myDetails { get; set; } = new List<Detail>();
 
     }
 }
