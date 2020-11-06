@@ -26,26 +26,30 @@ namespace WpfApp1
         {
             DBClass.openConnection();
 
-            DBClass.sqlHeader = "SELECT Id, Customer_id, Header_name, Date FROM Headers";
-            DBClass.cmdHeader.CommandType = CommandType.Text;
-            DBClass.cmdHeader.CommandText = DBClass.sqlHeader;
-            DBClass.daHeader = new SqlDataAdapter(DBClass.cmdHeader);
+            DBClass.sql = "SELECT Id, Customer_id, Header_name, Date FROM Headers";
+            DBClass.cmd.CommandType = CommandType.Text;
+            DBClass.cmd.CommandText = DBClass.sql;
+            DBClass.daHeader = new SqlDataAdapter(DBClass.cmd);
             DBClass.dtHeader = new DataTable();
             DBClass.daHeader.Fill(DBClass.dtHeader);
+            var _keyHeader = new DataColumn[1];
+            _keyHeader[0] = DBClass.dtHeader.Columns["Id"];
+            DBClass.dtHeader.PrimaryKey = _keyHeader;
 
-            DBClass.sqlDetail = "SELECT Id, Header_id, Article_name, Quantity, Net, Gross FROM Details";
-            DBClass.cmdDetail.CommandType = CommandType.Text;
-            DBClass.cmdDetail.CommandText = DBClass.sqlDetail;
-            DBClass.daDetail = new SqlDataAdapter(DBClass.cmdDetail);
+            // przy większej liczbie tabel: konieczne rozwiązanie niestatyczne
+            DBClass.sql = "SELECT Id, Header_id, Article_name, Quantity, Net, Gross FROM Details";
+            DBClass.cmd.CommandType = CommandType.Text;
+            DBClass.cmd.CommandText = DBClass.sql;
+            DBClass.daDetail = new SqlDataAdapter(DBClass.cmd);
             DBClass.dtDetail = new DataTable();
             DBClass.daDetail.Fill(DBClass.dtDetail);
-
-            // TODO: przy wiekszej liczbie tabel - raczej rozwiazanie niestatyczne
+            var _keyDetail = new DataColumn[1];
+            _keyDetail[0] = DBClass.dtDetail.Columns["Id"];
+            DBClass.dtDetail.PrimaryKey = _keyDetail;
 
             dgHeaders.ItemsSource = null;
             dgDetails.ItemsSource = null;
             dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
-            //                dgDetails.ItemsSource = DBClass.dtDetail.DefaultView;
 
             DBClass.closeConnection();
         }
@@ -72,6 +76,32 @@ namespace WpfApp1
             RefreshDetails(param);
         }
 
+        void dgh_NewHeader(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var param = Convert.ToInt16(button.CommandParameter);
+            try
+            {
+                DBClass.con.Open();
+                DBClass.sql = String.Format("INSERT Headers(date,customer_id,header_name) VALUES ( '{0}' , '{1}', '{2}'); SELECT SCOPE_IDENTITY()", DateTime.Now, 0, " ");
+                DBClass.cmd.CommandText = DBClass.sql;
+                int new_id = Convert.ToInt32(DBClass.cmd.ExecuteScalar());
+
+                DataRow row;
+                row = DBClass.dtHeader.NewRow();
+                row["Id"] = new_id;
+                row["Date"] = DateTime.Now;
+                row["Customer_id"] = 0;
+                row["Header_name"] = " ";
+                DBClass.dtHeader.Rows.Add(row);
+                dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
+                MessageBox.Show("new (empty) header added");
+            }
+            catch (SqlException ex) { MessageBox.Show(ex.Message); }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+            finally { DBClass.con.Close(); }
+        }
+
         void dgh_NewArticle(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
@@ -82,14 +112,10 @@ namespace WpfApp1
             {
                 try
                 {
-                    string values = String.Format("INSERT Details(header_id,article_name,quantity,net,gross) VALUES ( '{0}' , '{1}', '{2}', '{3}', '{4}'); SELECT SCOPE_IDENTITY()", param.ToString(), "", "0", "0", "0");
-                    SqlCommand crud_cmd = new SqlCommand();
-                    crud_cmd.Connection = DBClass.con;
-                    crud_cmd.CommandType = CommandType.Text;
+                    DBClass.sql = String.Format("INSERT Details(header_id,article_name,quantity,net,gross) VALUES ( '{0}' , '{1}', '{2}', '{3}', '{4}'); SELECT SCOPE_IDENTITY()", param.ToString(), "", "0", "0", "0");
                     DBClass.con.Open();
-                    crud_cmd.CommandText = values;
-                    int new_id = Convert.ToInt32(crud_cmd.ExecuteScalar());
-
+                    DBClass.cmd.CommandText = DBClass.sql;
+                    int new_id = Convert.ToInt32(DBClass.cmd.ExecuteScalar());
                     DataRow row;
                     row = DBClass.dtDetail.NewRow();
                     row["Id"] = new_id;
@@ -110,149 +136,80 @@ namespace WpfApp1
             }
         }
 
-
-
-
         void dgh_DeleteHeader(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
-            var param = Convert.ToInt32(button.CommandParameter);
-            try
+            var param = Convert.ToInt32(button.CommandParameter);  // id
+
+            var Res = MessageBox.Show("Do you want to Delete this header (with articles)", "Confirm", MessageBoxButton.YesNo);
+            if (Res == MessageBoxResult.Yes)
             {
-                var Res = MessageBox.Show("Do you want to Delete this header", "Confirm", MessageBoxButton.YesNo);
-                if (Res == MessageBoxResult.Yes)
+                try
                 {
-                    dtHeader.Rows.RemoveAt(_index);
-                    using (SqlConnection con = new SqlConnection(ConString))
-                    {
-                        SqlCommand crud_command = new SqlCommand();
-                        crud_command.Connection = con;
-                        con.Open();
-                        crud_command.CommandText = "DELETE FROM Details WHERE Header_Id = " + param.ToString();
-                        crud_command.ExecuteNonQuery();
-                        crud_command.CommandText = "DELETE FROM Headers WHERE Id = " + param.ToString();
-                        crud_command.ExecuteNonQuery();
-                        con.Close();
-                    }
+                    DataRow row = DBClass.dtHeader.Rows.Find(param);
+                    DBClass.dtHeader.Rows.Remove(row);
+
+                    DBClass.con.Open();
+
+                    DBClass.sql = string.Format("DELETE FROM Details WHERE Header_Id = {0}", param.ToString());
+                    DBClass.cmd.CommandText = DBClass.sql;
+                    DBClass.cmd.ExecuteNonQuery();
+
+                    DBClass.sql = string.Format("DELETE FROM Headers WHERE Id = {0}", param.ToString());
+                    DBClass.cmd.CommandText = DBClass.sql;
+                    DBClass.cmd.ExecuteNonQuery();
+
                     MessageBox.Show("header and header's details deleted");
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
+                catch (SqlException ex) { MessageBox.Show(ex.Message); }
+                catch (Exception ex) { MessageBox.Show(ex.Message); }
+                finally { DBClass.con.Close(); }
+
+                dgDetails.ItemsSource = null;
+
+                //DataRowView drv = (DataRowView)button.DataContext;
+                //int idrv = Convert.ToInt32(drv.Row.ItemArray[0]);     // id
+
             }
         }
 
-        void dgh_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        void dgh_DeleteAttribute(object sender, RoutedEventArgs e)
         {
-            DataGridRow dgr = e.Row as DataGridRow;
-            DataGrid dtr = sender as DataGrid;
-            DataRowView drv = dgHeaders.Items[dtr.SelectedIndex] as DataRowView;
-            if (!drv.IsNew && drv.IsEdit)
+            var button = sender as Button;
+            var param = Convert.ToInt32(button.CommandParameter);  // id
+
+            DataRowView drv = (DataRowView)button.DataContext;
+            int idrv = Convert.ToInt32(drv.Row.ItemArray[1]);     // header_id
+
+            var Res = MessageBox.Show("Do you want to Delete this article", "Confirm", MessageBoxButton.YesNo);
+            if (Res == MessageBoxResult.Yes)
             {
                 try
                 {
-                    var Res = MessageBox.Show("Do you want to Update this new entry", "Confirm", MessageBoxButton.YesNo);
-                    if (Res == MessageBoxResult.Yes)
-                    {
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                }
+                    DataRow row = DBClass.dtDetail.Rows.Find(param);
+                    DBClass.dtDetail.Rows.Remove(row);
+                    drv.Delete();
+                    RefreshDetails(idrv);
 
+                    DBClass.con.Open();
+
+                    DBClass.sql = string.Format("DELETE FROM Details WHERE Id = {0}", param.ToString());
+                    DBClass.cmd.CommandText = DBClass.sql;
+                    DBClass.cmd.ExecuteNonQuery();
+
+                    MessageBox.Show("article deleted");
+                }
+                catch (SqlException ex) { MessageBox.Show(ex.Message); }
+                catch (Exception ex) { MessageBox.Show(ex.Message); }
+                finally { DBClass.con.Close(); }
             }
         }
-                
-        void dgh_AddToDb(object sender, RoutedEventArgs e)
+
+
+
+        void dgh_SaveChanges(object sender, RoutedEventArgs e)
         {
-// TODO: rozbić na osobne produry
-            DataRowView drv = dgHeaders.SelectedItem as DataRowView;
-            if (drv == null)
-            {
-                MessageBox.Show("data not completed");
-                return;
-            }
-
-            var _id = drv.Row.ItemArray[0];
-            var _customer_id = drv.Row.ItemArray[1];
-            var _header_name = drv.Row.ItemArray[2];
-            var _date = drv.Row.ItemArray[3];
-
-// TODO: problem gdy datę wybieram jako pierwszą lub jako ostatnią
-            if (_customer_id == System.DBNull.Value || _header_name == System.DBNull.Value || _date == System.DBNull.Value)
-            {
-                MessageBox.Show("data not fully completed (required: date, header_name, customer_id)");
-                return;
-            }
-
-            // gdy brakuje klucza głównego => mamy nowy rekord
-            if (_id == System.DBNull.Value)
-            {
-                try
-                {
-                    var Res = MessageBox.Show("Do you want to Add this header to DB?", "Confirm", MessageBoxButton.YesNo);
-                    if (Res == MessageBoxResult.Yes)
-                    {
-                        string values = String.Format(" VALUES ( '{0}' , '{1}', '{2}' )", _date.ToString(),_customer_id.ToString(), _header_name.ToString());
-                        using (SqlConnection con = new SqlConnection(ConString))
-                        {
-                            SqlCommand crud_command = new SqlCommand();
-                            crud_command.Connection = con;
-                            con.Open();
-                            crud_command.CommandText = "INSERT INTO Headers (date, customer_id, header_name)" + values;
-                            crud_command.ExecuteNonQuery();
-                            con.Close();
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                }
-                MessageBox.Show("header added");
-            }
-            else
-            {
-                try
-                {
-                    var Res = MessageBox.Show("Do you want to Update this header in DB?", "Confirm", MessageBoxButton.YesNo);
-                    if (Res == MessageBoxResult.Yes)
-                    {
-                        string values = String.Format(" UPDATE header SET date = '{0}' , customer_id = '{1}' , header_name = '{2}' WHERE id = '{3}' ", _date.ToString(), _customer_id.ToString(), _header_name.ToString(), _id.ToString());
-                        using (SqlConnection con = new SqlConnection(ConString))
-                        {
-                            SqlCommand crud_command = new SqlCommand();
-                            crud_command.Connection = con;
-                            con.Open();
-                            crud_command.CommandText = values;
-                            crud_command.ExecuteNonQuery();
-                            con.Close();
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                }
-                MessageBox.Show("header updated");
-            }
         }
-        
-// TODO: pozbyć się tej procedury
-        int _index;
-        void dgHeaders_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var dg = sender as DataGrid;
-            if (dg == null) return;
-            _index = dg.SelectedIndex;
-            if (_index > 0)
-            {
-                DataGridRow datarow = dg.ItemContainerGenerator.ContainerFromIndex(_index) as DataGridRow;
-            }
-        }
-
 
 
         async void FillGitRepo()

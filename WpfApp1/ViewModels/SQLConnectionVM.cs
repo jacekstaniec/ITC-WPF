@@ -17,18 +17,18 @@ namespace WpfApp1.ViewModels
         static string _dbPath;
         static string _dbConString;
 
-        public static string sqlHeader;
-        public static string sqlDetail;
+        public static string sql;
 
         public static SqlConnection con = new SqlConnection();
-        public static SqlCommand cmdHeader = new SqlCommand("", con);
-        public static SqlCommand cmdDetail = new SqlCommand("", con);
+        public static SqlCommand cmd = new SqlCommand("", con);
+
         public static SqlDataReader rdHeader;
         public static SqlDataReader rdDetail;
         public static DataTable dtHeader;
         public static DataTable dtDetail;
         public static SqlDataAdapter daHeader;
         public static SqlDataAdapter daDetail;
+
 
         /// <summary>
         /// inicjalizacja zmiennych prywatnych
@@ -38,18 +38,6 @@ namespace WpfApp1.ViewModels
             _dbName = "Database1.mdf";
             _dbPath = System.IO.Path.GetFullPath(_dbName);
             _dbConString = "Data Source = (LocalDB)\\MSSQLLocalDB; AttachDbFilename = " + _dbPath + "; Integrated Security = True";
-        }
-
-        /// <summary>
-        /// special auto-try-catch connection
-        /// </summary>
-        public static void UseConnection()
-        {
-            setSettings();
-            using (SqlConnection con = new SqlConnection(_dbConString))
-            {
-                // TODO? .... NO
-            }
         }
 
         /// <summary>
