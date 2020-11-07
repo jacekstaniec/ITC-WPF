@@ -344,7 +344,7 @@ namespace WpfApp1
             const string GitHubIdentity = "jacekstaniec";
             const string GitHubProject = "ITC-WPF";
             GitHubRepoVM gtavm = new GitHubRepoVM(GitHubIdentity, GitHubProject);
-            List<GitHubAttribute> myGitHubAttributes = await gtavm.GetGitHubRepoAsync();
+            List<GitHub> myGitHubAttributes = await gtavm.GetGitHubRepoAsync();
             dgGitHub.ItemsSource = null;
             dgGitHub.ItemsSource = myGitHubAttributes;
         }
