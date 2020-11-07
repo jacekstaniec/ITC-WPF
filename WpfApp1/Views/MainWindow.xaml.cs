@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Data;
-using System.Data.SqlClient;
+using System.Windows.Media;
 using WpfApp1.Models;
 using WpfApp1.ViewModels;
-using System.Windows.Media;
+
 
 namespace WpfApp1
 {
@@ -21,37 +21,156 @@ namespace WpfApp1
 
         void FillDataGrid()
         {
-            DBClass.openConnection();
-
-            DBClass.sql = "SELECT Id, Customer_id, Header_name, Date, Net, Gross FROM Headers";
-            DBClass.cmd.CommandType = CommandType.Text;
-            DBClass.cmd.CommandText = DBClass.sql;
-            DBClass.daHeader = new SqlDataAdapter(DBClass.cmd);
-            DBClass.dtHeader = new DataTable();
-            DBClass.daHeader.Fill(DBClass.dtHeader);
-            var _keyHeader = new DataColumn[1];
-            _keyHeader[0] = DBClass.dtHeader.Columns["Id"];
-            DBClass.dtHeader.PrimaryKey = _keyHeader;
-
-            // przy większej liczbie tabel: konieczne rozwiązanie niestatyczne
-            DBClass.sql = "SELECT Id, Header_id, Article_name, Quantity, Net, Gross FROM Details";
-            DBClass.cmd.CommandType = CommandType.Text;
-            DBClass.cmd.CommandText = DBClass.sql;
-            DBClass.daDetail = new SqlDataAdapter(DBClass.cmd);
-            DBClass.dtDetail = new DataTable();
-            DBClass.daDetail.Fill(DBClass.dtDetail);
-            var _keyDetail = new DataColumn[1];
-            _keyDetail[0] = DBClass.dtDetail.Columns["Id"];
-            DBClass.dtDetail.PrimaryKey = _keyDetail;
+            RepoManager.SetHeaderTable();
+            RepoManager.SetDetailTable();
 
             dgHeaders.ItemsSource = null;
             dgDetails.ItemsSource = null;
             dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
-
-            DBClass.closeConnection();
         }
 
-        void RefreshDetails(int param)
+        #region click button events
+
+        void dg_ShowArticles(object sender, RoutedEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
+            var button = sender as Button;
+            var param = Convert.ToInt16(button.CommandParameter);
+            RefreshDetailsGrid(param);
+        }
+
+        void dg_AddHeader(object sender, RoutedEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
+            var button = sender as Button;
+            var param = Convert.ToInt16(button.CommandParameter);
+            RepoManager.AddHeader();
+            dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
+            MessageBox.Show("new (empty) header added");
+        }
+
+        void dg_AddArticle(object sender, RoutedEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
+            var button = sender as Button;
+            var param = Convert.ToInt16(button.CommandParameter);
+            var response = MessageBox.Show("Do you want to Add a new article", "Confirm", MessageBoxButton.YesNo);
+            if (response == MessageBoxResult.Yes)
+            {
+                RepoManager.AddArticle(param);
+                dgDetails.ItemsSource = DBClass.dtDetail.DefaultView;
+                RefreshDetailsGrid(param);
+                MessageBox.Show("new (empty) article added");
+            }
+        }
+
+        void dg_DeleteHeader(object sender, RoutedEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
+            var button = sender as Button;
+            var param = Convert.ToInt32(button.CommandParameter);  // id
+            var response = MessageBox.Show("Do you want to Delete this header (with all articles)", "Confirm", MessageBoxButton.YesNo);
+            if (response == MessageBoxResult.Yes)
+            {
+                RepoManager.DeleteHeader(param);
+                dgDetails.ItemsSource = null;
+                dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;               //refresh
+                MessageBox.Show("the header and all header's articles deleted");
+            }
+        }
+
+        void dg_DeleteArticle(object sender, RoutedEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
+            var button = sender as Button;
+            var param = Convert.ToInt32(button.CommandParameter);  // article_id
+            DataRowView drv = (DataRowView)button.DataContext;
+            int header_id = Convert.ToInt32(drv.Row.ItemArray[1]);  // header_id
+
+            var response = MessageBox.Show("Do you want to Delete this article", "Confirm", MessageBoxButton.YesNo);
+            if (response == MessageBoxResult.Yes)
+            {
+                RepoManager.DeleteArticle(param);            // delete from db, delete from table
+                RepoManager.RecalcHeaderTable(header_id);    // recalc db, recal head tale
+                RefreshDetailsGrid(header_id);               // refresh detail_grid
+                MessageBox.Show("article deleted");
+            }
+        }
+
+        void dg_UpdateHeader(object sender, RoutedEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
+            var button = sender as Button;
+            var param = Convert.ToInt32(button.CommandParameter);  // id
+
+            DataRowView drv = (DataRowView)button.DataContext;
+            var i0 = drv.Row.ItemArray[0];                   // id
+            var i1 = drv.Row.ItemArray[1];                   // customer_id
+            var i2 = drv.Row.ItemArray[2];                   // header_name
+            var i3 = drv.Row.ItemArray[3];                   // date
+            float i4 = Convert.ToSingle(drv.Row.ItemArray[4]);                   // net
+            float i5 = Convert.ToSingle(drv.Row.ItemArray[5]);                   // gross
+
+            Header header = new Header((int)i0, (DateTime)i3, (string)i2, (int)i1, i4, i5);
+            RepoManager.UpdateHeader(header);
+            RowRedWhiteMethod(dgHeaders, Brushes.White);
+            MessageBox.Show("header updated");
+        }
+
+        void dg_UpdateAttribute(object sender, RoutedEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
+            var button = sender as Button;
+            var param = Convert.ToInt32(button.CommandParameter);  // id
+
+            DataRowView drv = (DataRowView)button.DataContext;
+            var i0 = drv.Row.ItemArray[0];                   // id
+            var i1 = drv.Row.ItemArray[1];                   // header_id
+            var i2 = drv.Row.ItemArray[2];                   // article_name
+            var i3 = drv.Row.ItemArray[3];                   // quantity
+            float i4 = Convert.ToSingle(drv.Row.ItemArray[4]);                   // net
+            float i5 = 0.0f; // will be recalculated
+
+            Article article = new Article((int)i0, (int)i1, (string)i2, (int)i3, (float)i4, (float)i5);
+            RepoManager.UpdateArticle(article);                     // update db, update table table  //TODO: separate?
+            RepoManager.RecalcHeaderTable(Convert.ToInt32(i1));     // recalc db, recalc table
+            RowRedWhiteMethod(dgDetails, Brushes.White);
+            MessageBox.Show("article updated");
+        }
+
+        void dg_EnableUpdateColumns(object sender, RoutedEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Visible);
+        }
+
+        #endregion
+
+
+
+
+        #region row edit begining/ending triggers
+
+        void dgDetails_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+        {
+            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
+        }
+
+        void dgHeaders_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e) { RowRedWhiteMethod(dgHeaders, Brushes.Red); }
+
+        void dgDetails_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e) { RowRedWhiteMethod(dgDetails, Brushes.Red); }
+
+        #endregion
+
+
+
+        /// <summary>
+        /// github button event click 
+        /// </summary>
+        /// <param name="sender">object sender</param>
+        /// <param name="e">routed event args</param>
+        void btn_github_click(object sender, RoutedEventArgs e) { FillGitRepoAsync(); }
+
+        void RefreshDetailsGrid(int param)
         {
             ListCollectionView collectionView = new ListCollectionView((System.Collections.IList)DBClass.dtDetail.DefaultView);
             collectionView.Filter = (ff) =>
@@ -67,283 +186,33 @@ namespace WpfApp1
             dgDetails.ItemsSource = collectionView;
         }
 
-        void dgh_ShowDetails(object sender, RoutedEventArgs e)
+
+
+        void RowRedWhiteMethod(DataGrid dg, SolidColorBrush colorBrush)
         {
-            var button = sender as Button;
-            var param = Convert.ToInt16(button.CommandParameter);
-            RefreshDetails(param);
+            int ind = dg.SelectedIndex;
+            DataGridRow editedRow = dg.ItemContainerGenerator.ContainerFromItem(dg.Items[ind]) as DataGridRow;
+            editedRow.Background = colorBrush;
+            //            editedRow.Background = Brushes.Red;
         }
-
-        void dgh_NewHeader(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var param = Convert.ToInt16(button.CommandParameter);
-            try
-            {
-                DBClass.con.Open();
-                DBClass.sql = String.Format("INSERT Headers(date,customer_id,header_name) VALUES ( '{0}' , '{1}', '{2}'); SELECT SCOPE_IDENTITY()", DateTime.Now, 0, " ");
-                DBClass.cmd.CommandText = DBClass.sql;
-                int new_id = Convert.ToInt32(DBClass.cmd.ExecuteScalar());
-
-                DataRow row;
-                row = DBClass.dtHeader.NewRow();
-                row["Id"] = new_id;
-                row["Date"] = DateTime.Now;
-                row["Customer_id"] = 0;
-                row["Header_name"] = " ";
-                DBClass.dtHeader.Rows.Add(row);
-                dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
-                MessageBox.Show("new (empty) header added");
-            }
-            catch (SqlException ex) { MessageBox.Show(ex.Message); }
-            catch (Exception ex) { MessageBox.Show(ex.Message); }
-            finally { DBClass.con.Close(); }
-        }
-
-        void dgh_NewArticle(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var param = Convert.ToInt16(button.CommandParameter);
-
-            var Res = MessageBox.Show("Do you want to Add new article", "Confirm", MessageBoxButton.YesNo);
-            if (Res == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    DBClass.sql = String.Format("INSERT Details(header_id,article_name,quantity,net,gross) VALUES ( '{0}' , '{1}', '{2}', '{3}', '{4}'); SELECT SCOPE_IDENTITY()", param.ToString(), "", "0", "0", "0");
-                    DBClass.con.Open();
-                    DBClass.cmd.CommandText = DBClass.sql;
-                    int new_id = Convert.ToInt32(DBClass.cmd.ExecuteScalar());
-                    DataRow row;
-                    row = DBClass.dtDetail.NewRow();
-                    row["Id"] = new_id;
-                    row["Header_id"] = param;
-                    row["Article_name"] = "";
-                    row["Quantity"] = "0";
-                    row["Net"] = "0";
-                    row["Gross"] = "0";
-                    DBClass.dtDetail.Rows.Add(row);
-                    dgDetails.ItemsSource = DBClass.dtDetail.DefaultView;
-                    RefreshDetails(param);
-                    MessageBox.Show("new (empty) article added");
-                    //TODO: form do uzupełniania danych w locie
-                }
-                catch (SqlException ex) { MessageBox.Show(ex.Message); }
-                catch (Exception ex) { MessageBox.Show(ex.Message); }
-                finally { DBClass.con.Close(); }
-            }
-        }
-
-        void dgh_DeleteHeader(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var param = Convert.ToInt32(button.CommandParameter);  // id
-
-            var Res = MessageBox.Show("Do you want to Delete this header (with articles)", "Confirm", MessageBoxButton.YesNo);
-            if (Res == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    DataRow row = DBClass.dtHeader.Rows.Find(param);
-                    DBClass.dtHeader.Rows.Remove(row);
-
-                    DBClass.con.Open();
-
-                    DBClass.sql = string.Format("DELETE FROM Details WHERE Header_Id = {0}", param.ToString());
-                    DBClass.cmd.CommandText = DBClass.sql;
-                    DBClass.cmd.ExecuteNonQuery();
-
-                    DBClass.sql = string.Format("DELETE FROM Headers WHERE Id = {0}", param.ToString());
-                    DBClass.cmd.CommandText = DBClass.sql;
-                    DBClass.cmd.ExecuteNonQuery();
-
-                    MessageBox.Show("header and header's details deleted");
-                }
-                catch (SqlException ex) { MessageBox.Show(ex.Message); }
-                catch (Exception ex) { MessageBox.Show(ex.Message); }
-                finally { DBClass.con.Close(); }
-
-                dgDetails.ItemsSource = null;
-
-                //DataRowView drv = (DataRowView)button.DataContext;
-                //int idrv = Convert.ToInt32(drv.Row.ItemArray[0]);     // id
-
-            }
-        }
-
-        void dgh_DeleteAttribute(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var param = Convert.ToInt32(button.CommandParameter);  // id
-
-            DataRowView drv = (DataRowView)button.DataContext;
-            int idrv = Convert.ToInt32(drv.Row.ItemArray[1]);     // header_id
-
-            var Res = MessageBox.Show("Do you want to Delete this article", "Confirm", MessageBoxButton.YesNo);
-            if (Res == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    DataRow row = DBClass.dtDetail.Rows.Find(param);
-                    DBClass.dtDetail.Rows.Remove(row);
-                    drv.Delete();
-                    RefreshDetails(idrv);
-
-                    DBClass.con.Open();
-
-                    DBClass.sql = string.Format("DELETE FROM Details WHERE Id = {0}", param.ToString());
-                    DBClass.cmd.CommandText = DBClass.sql;
-                    DBClass.cmd.ExecuteNonQuery();
-
-                    MessageBox.Show("article deleted");
-                }
-                catch (SqlException ex) { MessageBox.Show(ex.Message); }
-                catch (Exception ex) { MessageBox.Show(ex.Message); }
-                finally { DBClass.con.Close(); }
-            }
-            net_gross(idrv);
-        }
-
-        void dgh_SaveChanges(object sender, RoutedEventArgs e)
-        {
-            dgHeaders.Columns[9].Visibility = Visibility.Hidden;
-            dgDetails.Columns[7].Visibility = Visibility.Hidden;
-            int ind = dgHeaders.SelectedIndex;
-            DataGridRow editedRow = dgHeaders.ItemContainerGenerator.ContainerFromItem(dgHeaders.Items[ind]) as DataGridRow;
-            editedRow.Background = Brushes.White;
-
-            var button = sender as Button;
-            var param = Convert.ToInt32(button.CommandParameter);  // id
-
-            DataRowView drv = (DataRowView)button.DataContext;
-            string idrv1 = drv.Row.ItemArray[1].ToString();     // customer_id
-            string idrv2 = drv.Row.ItemArray[2].ToString();     // header_name
-            string idrv3 = drv.Row.ItemArray[3].ToString();     // date
-            try
-            {
-                //                RefreshDetails(idrv);
-
-                DBClass.con.Open();
-
-                DBClass.sql = string.Format("UPDATE Headers set customer_id = '{0}', header_name = '{1}', date = '{2}'  WHERE Id = {3}", idrv1, idrv2, idrv3, param.ToString());
-                DBClass.cmd.CommandText = DBClass.sql;
-                DBClass.cmd.ExecuteNonQuery();
-
-                MessageBox.Show("header updated");
-            }
-            catch (SqlException ex) { MessageBox.Show(ex.Message); }
-            catch (Exception ex) { MessageBox.Show(ex.Message); }
-            finally { DBClass.con.Close(); }
-            return;
-        }
-
-        void dgh_UpdateAttribute(object sender, RoutedEventArgs e)
-        {
-            dgHeaders.Columns[9].Visibility = Visibility.Hidden;
-            dgDetails.Columns[7].Visibility = Visibility.Hidden;
-            int ind = dgDetails.SelectedIndex;
-            DataGridRow editedRow = dgDetails.ItemContainerGenerator.ContainerFromItem(dgDetails.Items[ind]) as DataGridRow;
-            editedRow.Background = Brushes.White;
-
-            var button = sender as Button;
-            var param = Convert.ToInt32(button.CommandParameter);  // id
-
-            DataRowView drv = (DataRowView)button.DataContext;
-            string idrv1 = drv.Row.ItemArray[1].ToString();     // header_id
-            string idrv2 = drv.Row.ItemArray[2].ToString();     // article_name
-            string idrv3 = drv.Row.ItemArray[3].ToString();             // quantity
-            float idrv4 = Convert.ToSingle(drv.Row.ItemArray[4]);       // net
-            float idrv5 = (float)(idrv4 * 1.23);                        // gross
-            try
-            {
-                DBClass.con.Open();
-
-                DBClass.sql = string.Format("UPDATE Details set header_id = '{0}', article_name = '{1}', quantity='{2}', net='{3}', gross='{4}'  WHERE Id ='{5}'", idrv1, idrv2, idrv3, idrv4, idrv5, param.ToString());
-                DBClass.cmd.CommandText = DBClass.sql;
-                DBClass.cmd.ExecuteNonQuery();
-
-                MessageBox.Show("article updated");
-            }
-            catch (SqlException ex) { MessageBox.Show(ex.Message); }
-            catch (Exception ex) { MessageBox.Show(ex.Message); }
-            finally { DBClass.con.Close(); }
-            net_gross(Convert.ToInt32(idrv1));
-        }
-
 
         /// <summary>
-        /// event click on github button
+        /// Trick method necessary for delayed grid functionality 
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void btn_github_click(object sender, RoutedEventArgs e)
+        /// <param name="v">visibility</param>
+        private void GridUpdateColumnsVisibilityTrick(Visibility v)
         {
-            FillGitRepo();
+            int headersGridUpdateColumn = 9;
+            int detailsGridUpdateColumn = 7;
+            dgHeaders.Columns[headersGridUpdateColumn].Visibility = v;
+            dgDetails.Columns[detailsGridUpdateColumn].Visibility = v;
         }
 
-        void dgHeaders_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
-        {
-            dgHeaders.Columns[9].Visibility = Visibility.Hidden;
-            dgDetails.Columns[7].Visibility = Visibility.Hidden;
-            int ind = dgHeaders.SelectedIndex;
-            DataGridRow editedRow = dgHeaders.ItemContainerGenerator.ContainerFromItem(dgHeaders.Items[ind]) as DataGridRow;
-            editedRow.Background = Brushes.Red;
-        }
-
-        void dgDetails_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
-        {
-            dgHeaders.Columns[9].Visibility = Visibility.Hidden;
-            dgDetails.Columns[7].Visibility = Visibility.Hidden;
-            int ind = dgDetails.SelectedIndex;
-            DataGridRow editedRow = dgDetails.ItemContainerGenerator.ContainerFromItem(dgDetails.Items[ind]) as DataGridRow;
-            editedRow.Background = Brushes.Red;
-        }
-
-        void dgh_UpdateHeader(object sender, RoutedEventArgs e)
-        {
-            dgHeaders.Columns[9].Visibility = Visibility.Visible;
-            dgDetails.Columns[7].Visibility = Visibility.Visible;
-        }
-
-
-        void net_gross(int header_id)
-        {
-            string expression = "Header_id = " + header_id.ToString();
-            DataRow[] rows;
-            rows = DBClass.dtDetail.Select(expression);
-            float SumNet = 0;
-            float SumGross = 0;
-            foreach (var item in rows)
-            {
-                SumNet += Convert.ToSingle(item["Net"]);
-                SumGross += Convert.ToSingle(item["Gross"]);
-            }
-            try
-            {
-                expression = "Id = " + header_id.ToString();
-                rows = DBClass.dtHeader.Select(expression);
-                if (rows != null)
-                {
-                    rows[0]["Net"] = SumNet;
-                    rows[0]["Gross"] = SumGross;
-                }
-                DBClass.con.Open();
-
-                DBClass.sql = string.Format("UPDATE Headers SET net='{0}', gross='{1}' WHERE id = '{2}' ", SumNet, SumGross, header_id);
-                DBClass.cmd.CommandText = DBClass.sql;
-                DBClass.cmd.ExecuteNonQuery();
-            }
-            catch (SqlException ex) { MessageBox.Show(ex.Message); }
-            catch (Exception ex) { MessageBox.Show(ex.Message); }
-            finally { DBClass.con.Close(); }
-        }
-
-
-        async void FillGitRepo()
+        async void FillGitRepoAsync()
         {
             const string GitHubIdentity = "jacekstaniec";
             const string GitHubProject = "ITC-WPF";
-            GitHubRepoVM gtavm = new GitHubRepoVM(GitHubIdentity, GitHubProject);
+            GitHubRepo gtavm = new GitHubRepo(GitHubIdentity, GitHubProject);
             List<GitHub> myGitHubAttributes = await gtavm.GetGitHubRepoAsync();
             dgGitHub.ItemsSource = null;
             dgGitHub.ItemsSource = myGitHubAttributes;

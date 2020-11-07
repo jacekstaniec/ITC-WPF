@@ -1,21 +1,24 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
-using System.Text;
-
-namespace WpfApp1.Models
+﻿namespace WpfApp1.Models
 {
-    class Header
+    using System;
+
+    public struct Header
     {
-        public int Id { get; set; }
+        public Header(int _id, DateTime _date, string _name, int _cid, float _net, float _gross)
+        {
+            Id = _id;
+            Date = _date;
+            Header_name = _name;
+            Customer_id = _cid;
+            Net = _net;
+            Gross = _gross;
+        }
+
+        public int Id { get; private set; }
         public DateTime Date { get; set; }
         public string Header_name { get; set; }
         public int Customer_id { get; set; }
-        public SqlMoney Net { get; set; }
-        public SqlMoney Gross { get; set; }
-
-        // public List<Detail> myDetails { get; set; } = new List<Detail>();
-
+        public float Net { get; private set; }
+        public float Gross { get; private set; }
     }
 }
