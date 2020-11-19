@@ -34,7 +34,7 @@ namespace WpfApp1
 
 
 
-        #region click button events
+        #region click button events TODO: replace all by ICommands (view-model)
 
         /// <summary>
         /// show related articles event
@@ -43,26 +43,19 @@ namespace WpfApp1
         /// <param name="e">event-args</param>
         void dg_ShowArticles(object sender, RoutedEventArgs e)
         {
-            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
             var button = sender as Button;
             var param = Convert.ToInt16(button.CommandParameter);
             RefreshDetailsGrid(param);
         }
 
         /// <summary>
-        /// add header event
+        /// replaced by AddHeaderCommand command (in view-model)
         /// </summary>
         /// <param name="sender">button</param>
         /// <param name="e">event-args</param>
         void dg_AddHeader(object sender, RoutedEventArgs e)
         {
-            // some code replaced by AddHeaderCommand command (in view-model)
-            // GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
-            //var button = sender as Button;
-            //var param = Convert.ToInt16(button.CommandParameter);
-            //RepoManager.AddHeader();
-            // dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
-            //MessageBox.Show("new (empty) header added");
+            // code replaced by AddHeaderCommand command (in view-model)
         }
 
         /// <summary>
@@ -72,7 +65,6 @@ namespace WpfApp1
         /// <param name="e">event-args</param>
         void dg_AddArticle(object sender, RoutedEventArgs e)
         {
-            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
             var button = sender as Button;
             var param = Convert.ToInt16(button.CommandParameter);
             var response = MessageBox.Show("Do you want to Add a new article", "Confirm", MessageBoxButton.YesNo);
@@ -92,7 +84,6 @@ namespace WpfApp1
         /// <param name="e">event-args</param>
         void dg_DeleteHeader(object sender, RoutedEventArgs e)
         {
-            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
             var button = sender as Button;
             var param = Convert.ToInt32(button.CommandParameter);  // id
             var response = MessageBox.Show("Do you want to Delete this header (with all articles)", "Confirm", MessageBoxButton.YesNo);
@@ -112,7 +103,6 @@ namespace WpfApp1
         /// <param name="e">event-args</param>
         void dg_DeleteArticle(object sender, RoutedEventArgs e)
         {
-            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
             var button = sender as Button;
             var param = Convert.ToInt32(button.CommandParameter);  // article_id
             DataRowView drv = (DataRowView)button.DataContext;
@@ -135,7 +125,6 @@ namespace WpfApp1
         /// <param name="e">event-args</param>
         void dg_UpdateHeader(object sender, RoutedEventArgs e)
         {
-            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
             var button = sender as Button;
             var param = Convert.ToInt32(button.CommandParameter);  // id
 
@@ -149,7 +138,6 @@ namespace WpfApp1
 
             Header header = new Header((int)i0, (DateTime)i3, (string)i2, (int)i1, i4, i5);
             RepoManager.UpdateHeader(header);
-            RowRedWhiteMethod(dgHeaders, Brushes.White);
             MessageBox.Show("header updated");
         }
 
@@ -160,7 +148,6 @@ namespace WpfApp1
         /// <param name="e">event-args</param>
         void dg_UpdateAttribute(object sender, RoutedEventArgs e)
         {
-            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
             var button = sender as Button;
             var param = Convert.ToInt32(button.CommandParameter);  // id
 
@@ -175,32 +162,10 @@ namespace WpfApp1
             Article article = new Article((int)i0, (int)i1, (string)i2, (int)i3, (float)i4, (float)i5);
             RepoManager.UpdateArticle(article);                     // update db, update table table  //TODO: separate?
             RepoManager.RecalcHeaderTable(Convert.ToInt32(i1));     // recalc db, recalc table
-            RowRedWhiteMethod(dgDetails, Brushes.White);
             MessageBox.Show("article updated");
         }
 
-        /// <summary>
-        /// show column with update buttons
-        /// </summary>
-        /// <param name="sender">button</param>
-        /// <param name="e">event-args</param>
-        void dg_EnableUpdateColumns(object sender, RoutedEventArgs e)
-        {
-            GridUpdateColumnsVisibilityTrick(Visibility.Visible);
-        }
-
         #endregion
-
-
-        void dgDetails_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
-        {
-            GridUpdateColumnsVisibilityTrick(Visibility.Hidden);
-        }
-
-        void dgDetails_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e) { RowRedWhiteMethod(dgDetails, Brushes.Red); }
-
-        void dgHeaders_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e) { RowRedWhiteMethod(dgHeaders, Brushes.Red); }
-
 
         /// <summary>
         /// github refresh atributes button event
@@ -227,30 +192,6 @@ namespace WpfApp1
             };
             dgHeaders.ItemsSource = DBClass.dtHeader.DefaultView;
             dgDetails.ItemsSource = collectionView;
-        }
-
-        /// <summary>
-        /// change row updated color method
-        /// </summary>
-        /// <param name="dg">data-grid</param>
-        /// <param name="colorBrush">color</param>
-        void RowRedWhiteMethod(DataGrid dg, SolidColorBrush colorBrush)
-        {
-            int ind = dg.SelectedIndex;
-            DataGridRow editedRow = dg.ItemContainerGenerator.ContainerFromItem(dg.Items[ind]) as DataGridRow;
-            editedRow.Background = colorBrush;
-        }
-
-        /// <summary>
-        /// Trick method necessary for delayed grid functionality
-        /// </summary>
-        /// <param name="v">visibility</param>
-        private void GridUpdateColumnsVisibilityTrick(Visibility v)
-        {
-            int headersGridUpdateColumn = 9;
-            int detailsGridUpdateColumn = 7;
-            dgHeaders.Columns[headersGridUpdateColumn].Visibility = v;
-            dgDetails.Columns[detailsGridUpdateColumn].Visibility = v;
         }
 
         /// <summary>
